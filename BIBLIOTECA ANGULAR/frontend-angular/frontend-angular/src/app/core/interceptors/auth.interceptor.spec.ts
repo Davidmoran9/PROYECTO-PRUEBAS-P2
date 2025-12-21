@@ -1,21 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient, HttpRequest, HttpHeaders } from '@angular/common/http';
+import { provideHttpClient, HttpRequest, HttpHeaders, HttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './auth.interceptor';
 
 describe('AuthInterceptor - Comprehensive Testing Suite', () => {
   let httpMock: HttpTestingController;
+  let httpClient: HttpClient;
   const TEST_URL = 'http://localhost:3000/api/test';
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting()
       ]
     });
 
     httpMock = TestBed.inject(HttpTestingController);
+    httpClient = TestBed.inject(HttpClient);
     
     // Limpiar localStorage antes de cada prueba
     localStorage.clear();
@@ -432,6 +434,83 @@ describe('AuthInterceptor - Comprehensive Testing Suite', () => {
       
       const token = localStorage.getItem('token');
       expect(token?.length).toBe(1000);
+    });
+  });
+
+  // ===== CASO 13: INTEGRATION TESTS - INTERCEPTOR EXECUTION =====
+  describe('Test Case 13: Integration Tests - Interceptor Execution', () => {
+    it('should add Authorization header when token exists in localStorage', () => {
+      const token = 'integration-test-token';
+      localStorage.setItem('token', token);
+
+      httpClient.get(TEST_URL).subscribe();
+
+      const req = httpMock.expectOne(TEST_URL);
+      expect(req.request.headers.has('Authorization')).toBeTrue();
+      expect(req.request.headers.get('Authorization')).toBe(`Bearer ${token}`);
+      
+      req.flush({ success: true });
+    });
+
+    it('should NOT add Authorization header when token does not exist', () => {
+      localStorage.removeItem('token');
+
+      httpClient.get(TEST_URL).subscribe();
+
+      const req = httpMock.expectOne(TEST_URL);
+      expect(req.request.headers.has('Authorization')).toBeFalse();
+      
+      req.flush({ success: true });
+    });
+
+    it('should add Authorization header to POST requests with token', () => {
+      const token = 'post-test-token';
+      localStorage.setItem('token', token);
+
+      httpClient.post(TEST_URL, { data: 'test' }).subscribe();
+
+      const req = httpMock.expectOne(TEST_URL);
+      expect(req.request.headers.has('Authorization')).toBeTrue();
+      expect(req.request.headers.get('Authorization')).toBe(`Bearer ${token}`);
+      expect(req.request.method).toBe('POST');
+      
+      req.flush({ success: true });
+    });
+
+    it('should work with different HTTP methods', () => {
+      const token = 'methods-test-token';
+      localStorage.setItem('token', token);
+
+      // Test DELETE
+      httpClient.delete(TEST_URL).subscribe();
+      const deleteReq = httpMock.expectOne(TEST_URL);
+      expect(deleteReq.request.headers.get('Authorization')).toBe(`Bearer ${token}`);
+      deleteReq.flush({ success: true });
+
+      // Test PUT
+      httpClient.put(TEST_URL, {}).subscribe();
+      const putReq = httpMock.expectOne(TEST_URL);
+      expect(putReq.request.headers.get('Authorization')).toBe(`Bearer ${token}`);
+      putReq.flush({ success: true });
+    });
+
+    it('should preserve existing headers when adding Authorization', () => {
+      const token = 'headers-test-token';
+      localStorage.setItem('token', token);
+
+      httpClient.get(TEST_URL, {
+        headers: new HttpHeaders({
+          'Content-Type': 'application/json',
+          'X-Custom-Header': 'custom-value'
+        })
+      }).subscribe();
+
+      const req = httpMock.expectOne(TEST_URL);
+      expect(req.request.headers.get('Authorization')).toBe(`Bearer ${token}`);
+      expect(req.request.headers.get('Content-Type')).toBe('application/json');
+      expect(req.request.headers.get('X-Custom-Header')).toBe('custom-value');
+      
+      req.flush({ success: true });
     });
   });
 });
