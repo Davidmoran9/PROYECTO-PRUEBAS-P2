@@ -57,7 +57,7 @@ export class RegisterComponent {
       this.password
     ).subscribe({
       next: res => {
-        this.mensaje = 'Usuario registrado correctamente ✅';
+        this.mensaje = 'Usuario registrado correctamente';
         this.nombre = '';
         this.email = '';
         this.password = '';

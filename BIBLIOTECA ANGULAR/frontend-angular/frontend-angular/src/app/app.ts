@@ -17,7 +17,7 @@ import { LibroService } from './core/services/libro.service';
   template: `
     <!-- LOGIN / REGISTER -->
     <div class="auth-wrapper" *ngIf="!logueado">
-      <h1>📚 Biblioteca Digital</h1>
+      <h1> Biblioteca Digital</h1>
 
       <!-- LOGIN -->
       <app-login
