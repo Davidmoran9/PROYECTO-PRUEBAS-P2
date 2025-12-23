@@ -6,15 +6,27 @@ const auth = require('../middlewares/auth.middleware');
 // ============================
 // CREATE - Crear libro
 // ============================
+
 router.post('/', auth, async (req, res) => {
   try {
-    const { titulo, autor } = req.body;
+    const { titulo, autor, cantidad } = req.body;
 
-    if (!titulo || !autor) {
+    if (!titulo || !autor || cantidad == null) {
       return res.status(400).json({ msg: 'Todos los campos son obligatorios' });
     }
 
-    const libro = new Libro({ titulo, autor });
+    if (cantidad < 0) {
+      return res.status(400).json({ msg: 'La cantidad no puede ser negativa' });
+    }
+
+    // Regla de negocio: no permitir libros duplicados por titulo
+    const libroExistente = await Libro.findOne({ titulo });
+
+    if (libroExistente) {
+      return res.status(409).json({ msg: 'El libro ya existe' });
+    } 
+
+    const libro = new Libro({ titulo, autor, cantidad });
     await libro.save();
 
     res.status(201).json(libro);
@@ -22,6 +34,7 @@ router.post('/', auth, async (req, res) => {
     res.status(500).json({ msg: 'Error al crear libro' });
   }
 });
+
 
 // ============================
 // READ - Listar libros
